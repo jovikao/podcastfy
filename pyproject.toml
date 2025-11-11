@@ -41,12 +41,14 @@ nbsphinx = "^0.9.5"
 edge-tts = "^7.2.3"
 types-pyyaml = "^6.0.12.20240917"
 nest-asyncio = "^1.6.0"
+azure-cognitiveservices-speech = "^1.40.0"
 ffmpeg = "^1.4"
 pytest = "^8.3.3"
 pytest-xdist = "^3.6.1"
 google-cloud-texttospeech = "^2.21.0"
 litellm = "^1.52.0"
 langchain-community = "^0.3.5"
+playwright = "^1.55.0"
 
 
 [tool.poetry.group.dev.dependencies]

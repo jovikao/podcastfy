@@ -1,5 +1,5 @@
 """Factory for creating TTS providers."""
-
+import logging
 from typing import Dict, Type, Optional
 from .base import TTSProvider
 from .providers.elevenlabs import ElevenLabsTTS
@@ -7,6 +7,9 @@ from .providers.openai import OpenAITTS
 from .providers.edge import EdgeTTS
 from .providers.gemini import GeminiTTS
 from .providers.geminimulti import GeminiMultiTTS
+from .providers.azure import AzureTTS
+logger = logging.getLogger(__name__)
+
 class TTSProviderFactory:
     """Factory class for creating TTS providers."""
     
@@ -15,7 +18,8 @@ class TTSProviderFactory:
         'openai': OpenAITTS,
         'edge': EdgeTTS,
         'gemini': GeminiTTS,
-        'geminimulti': GeminiMultiTTS
+        'geminimulti': GeminiMultiTTS,
+        'azure': AzureTTS
     }
     
     @classmethod
@@ -35,6 +39,7 @@ class TTSProviderFactory:
             ValueError: If provider_name is not supported
         """
         provider_class = cls._providers.get(provider_name.lower())
+        logger.info(f"===== Creating TTS provider class {provider_class}")
         if not provider_class:
             raise ValueError(f"Unsupported provider: {provider_name}. "
                            f"Choose from: {', '.join(cls._providers.keys())}")
