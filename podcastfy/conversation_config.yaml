@@ -44,6 +44,7 @@ text_to_speech:
     default_voices:
       question: "en-US-JennyMultilingualNeural"
       answer: "en-US-GuyMultilingualNeural"
+    model: "azure"
   gemini:
     default_voices:
       question: "en-US-Journey-D"
