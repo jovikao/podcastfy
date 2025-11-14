@@ -295,7 +295,8 @@ class GeminiMultiTTS(TTSProvider):
                     ]
                 )
                 voice_params = texttospeech.VoiceSelectionParams(
-                    language_code="zh-TW",
+                    #https://docs.cloud.google.com/text-to-speech/docs/gemini-tts?hl=zh-tw#language_availability
+                    language_code="cmn-tw",
                     #name=model,
                     model_name = "gemini-2.5-pro-tts",
                     multi_speaker_voice_config = multi_speaker_voice_config,
