@@ -1,6 +1,6 @@
 """Google Cloud Text-to-Speech provider implementation."""
 
-from google.cloud import texttospeech_v1beta1
+from google.cloud import texttospeech
 from typing import List
 from ..base import TTSProvider
 import re
@@ -22,7 +22,7 @@ class GeminiMultiTTS(TTSProvider):
         """
         self.model = model
         try:
-            self.client = texttospeech_v1beta1.TextToSpeechClient(
+            self.client = texttospeech.TextToSpeechClient(
                 client_options={'api_key': api_key} if api_key else None
             )
             logger.info("Successfully initialized GeminiMultiTTS client")
@@ -238,7 +238,7 @@ class GeminiMultiTTS(TTSProvider):
             for i, chunk in enumerate(text_chunks, 1):
                 logger.debug(f"Processing chunk {i}/{len(text_chunks)}")
                 # Create multi-speaker markup
-                multi_speaker_markup = texttospeech_v1beta1.MultiSpeakerMarkup()
+                multi_speaker_markup = texttospeech.MultiSpeakerMarkup()
                 #print("######################### CHUNK #########################")
                 #print(chunk)
                 # Get Q&A pairs for this chunk
@@ -256,7 +256,7 @@ class GeminiMultiTTS(TTSProvider):
                     logger.debug(f"######################### Question chunks: {question_chunks}")
                     for q_chunk in question_chunks:
                         logger.debug(f"Adding question turn: '{q_chunk[:50]}...' (length: {len(q_chunk)})")
-                        q_turn = texttospeech_v1beta1.MultiSpeakerMarkup.Turn()
+                        q_turn = texttospeech.MultiSpeakerMarkup.Turn()
                         q_turn.text = q_chunk
                         q_turn.speaker = voice
                         multi_speaker_markup.turns.append(q_turn)
@@ -268,7 +268,7 @@ class GeminiMultiTTS(TTSProvider):
                         logger.debug(f"######################### Answer chunks: {answer_chunks}")
                         for a_chunk in answer_chunks:
                             logger.debug(f"Adding answer turn: '{a_chunk[:50]}...' (length: {len(a_chunk)})")
-                            a_turn = texttospeech_v1beta1.MultiSpeakerMarkup.Turn()
+                            a_turn = texttospeech.MultiSpeakerMarkup.Turn()
                             a_turn.text = a_chunk
                             a_turn.speaker = voice2
                             multi_speaker_markup.turns.append(a_turn)
@@ -276,21 +276,35 @@ class GeminiMultiTTS(TTSProvider):
                 logger.debug(f"Created markup with {len(multi_speaker_markup.turns)} turns")
                 
                 # Create synthesis input with multi-speaker markup
-                synthesis_input = texttospeech_v1beta1.SynthesisInput(
+                synthesis_input = texttospeech.SynthesisInput(
                     multi_speaker_markup=multi_speaker_markup
                 )
                 
                 logger.debug("Calling synthesize_speech API")
                 # Set voice parameters
-                voice_params = texttospeech_v1beta1.VoiceSelectionParams(
-                    language_code="en-US",
-                    name=model
+                multi_speaker_voice_config = texttospeech.MultiSpeakerVoiceConfig(
+                    speaker_voice_configs=[
+                        texttospeech.MultispeakerPrebuiltVoice(
+                            speaker_alias="R",
+                            speaker_id="Kore",
+                        ),
+                        texttospeech.MultispeakerPrebuiltVoice(
+                            speaker_alias="S",
+                            speaker_id="Charon",
+                        ),
+                    ]
+                )
+                voice_params = texttospeech.VoiceSelectionParams(
+                    language_code="zh-TW",
+                    #name=model,
+                    model_name = "gemini-2.5-pro-tts",
+                    multi_speaker_voice_config = multi_speaker_voice_config,
                 )
                 
                 # Set audio config
-                audio_config = texttospeech_v1beta1.AudioConfig(
-                    audio_encoding=texttospeech_v1beta1.AudioEncoding.MP3,
-                    #sample_rate_hertz=44100,  # Specify sample rate
+                audio_config = texttospeech.AudioConfig(
+                    audio_encoding=texttospeech.AudioEncoding.MP3,
+                    sample_rate_hertz=24000,  # Specify sample rate
                     #effects_profile_id=['headphone-class-device'],  # Optimize for headphones
                     #speaking_rate=1.0,  # Normal speaking rate
                 )
