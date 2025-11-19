@@ -1,13 +1,9 @@
 import unittest
 import pytest
-from unittest.mock import patch, MagicMock
 import tempfile
 import os
 from podcastfy.content_generator import ContentGenerator
 from podcastfy.utils.config import Config
-from podcastfy.utils.config_conversation import ConversationConfig
-from podcastfy.content_parser.pdf_extractor import PDFExtractor
-from podcastfy.content_parser.content_extractor import ContentExtractor
 
 
 MOCK_IMAGE_PATHS = [
@@ -97,21 +93,6 @@ class TestGenAIPodcast(unittest.TestCase):
         # Clean up the temporary file
         os.unlink(temp_file.name)
 
-    def test_generate_qa_content_from_pdf(self):
-        """Test generating Q&A content from a PDF file."""
-        pdf_file = "tests/data/pdf/file.pdf"
-        content_generator = ContentGenerator(model_name=MODEL_NAME, api_key_label=API_KEY_LABEL)
-        pdf_extractor = PDFExtractor()
-
-        # Extract content from the PDF file
-        extracted_content = pdf_extractor.extract_content(pdf_file)
-
-        # Generate Q&A content from the extracted text
-        result = content_generator.generate_qa_content(input_texts=extracted_content)
-
-        self.assertIsNotNone(result)
-        self.assertNotEqual(result, "")
-        self.assertIsInstance(result, str)
 
     def test_generate_qa_content_from_raw_text(self):
         """Test generating Q&A content from raw input text."""
@@ -124,33 +105,6 @@ class TestGenAIPodcast(unittest.TestCase):
         self.assertNotEqual(result, "")
         self.assertIsInstance(result, str)
 
-    @pytest.mark.skip(reason="Too expensive to be auto tested on Github Actions")
-    def test_generate_qa_content_from_topic(self):
-        """Test generating Q&A content from a specific topic."""
-        topic = "Latest news about OpenAI"
-        content_generator = ContentGenerator(model_name=MODEL_NAME, api_key_label=API_KEY_LABEL)
-        extractor = ContentExtractor()
-        topic = "Latest news about OpenAI"
-
-        # Generate content for the topic
-        content = extractor.generate_topic_content(topic)
-
-        result = content_generator.generate_qa_content(input_texts=content)
-
-        self.assertIsNotNone(result)
-        self.assertNotEqual(result, "")
-        self.assertIsInstance(result, str)
-
-        # Verify Q&A format
-        self.assertIn("<Person1>", result)
-        self.assertIn("<Person2>", result)
-
-        # Verify content relevance
-        lower_result = result.lower()
-        self.assertTrue(
-            any(term in lower_result for term in ["openai"]),
-            "Generated content should be relevant to the topic",
-        )
 
 
 if __name__ == "__main__":
