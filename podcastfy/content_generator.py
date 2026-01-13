@@ -769,25 +769,41 @@ class ContentGenerator:
             )
         }
 
-    def __compose_prompt(self, num_images: int, longform: bool=False):
+    def __compose_prompt(self, num_images: int, longform: bool=False, single_speaker: bool=False):
         """
         Compose the prompt for the LLM based on the content list.
         """
         content_generator_config = self.config.get("content_generator", {})
-        
+
         # Get base template and commit values
         base_template = content_generator_config.get("prompt_template")
         base_commit = content_generator_config.get("prompt_commit")
-        
-        # Modify template and commit for longform if configured
-        if longform:
+
+        # Determine which template to use
+        if single_speaker:
+            # Use local template for single-speaker mode
+            template_path = content_generator_config.get("single_speaker_prompt_template")
+            if not template_path:
+                raise ValueError("single_speaker_prompt_template not configured in config.yaml")
+
+            # Read local template file
+            import os
+            full_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), template_path)
+            with open(full_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+
+            # Create a simple prompt template from the content
+            prompt_template = ChatPromptTemplate.from_messages([
+                ("system", template_content)
+            ])
+        elif longform:
             template = content_generator_config.get("longform_prompt_template")
             commit = content_generator_config.get("longform_prompt_commit")
+            prompt_template = hub.pull(f"{template}:{commit}")
         else:
             template = base_template
             commit = base_commit
-
-        prompt_template = hub.pull(f"{template}:{commit}")
+            prompt_template = hub.pull(f"{template}:{commit}")
 
         image_path_keys = []
         messages = []
@@ -839,7 +855,8 @@ class ContentGenerator:
         input_texts: str = "",
         image_file_paths: List[str] = [],
         output_filepath: Optional[str] = None,
-        longform: bool = False
+        longform: bool = False,
+        single_speaker: bool = False
     ) -> str:
         """
         Generate Q&A content based on input texts.
@@ -848,10 +865,8 @@ class ContentGenerator:
             input_texts (str): Input texts to generate content from.
             image_file_paths (List[str]): List of image file paths.
             output_filepath (Optional[str]): Filepath to save the response content.
-            is_local (bool): Whether to use a local LLM or not.
-            model_name (str): Model name to use for generation.
-            api_key_label (str): Environment variable name for API key.
             longform (bool): Whether to generate long-form content. Defaults to False.
+            single_speaker (bool): Whether to generate single-speaker podcast. Defaults to False.
 
         Returns:
             str: Generated conversation content
@@ -863,13 +878,13 @@ class ContentGenerator:
         try:
             # Get appropriate strategy
             strategy = self.strategies[longform]
-            
+
             # Validate inputs for chosen strategy
             strategy.validate(input_texts, image_file_paths)
 
             # Setup chain
             num_images = 0 if self.is_local else len(image_file_paths)
-            self.prompt_template, image_path_keys = self.__compose_prompt(num_images, longform)
+            self.prompt_template, image_path_keys = self.__compose_prompt(num_images, longform, single_speaker)
             self.parser = StrOutputParser()
             self.chain = self.prompt_template | self.llm | self.parser
 
@@ -881,6 +896,10 @@ class ContentGenerator:
                 image_path_keys,
                 input_texts
             )
+
+            # For single-speaker mode, add speaker_role parameter
+            if single_speaker:
+                prompt_params["speaker_role"] = self.config_conversation.get("speaker_role", "expert host and narrator")
 
             # Generate content using selected strategy
             self.response = strategy.generate(

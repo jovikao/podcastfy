@@ -14,19 +14,24 @@ import tempfile
 from typing import List, Tuple, Optional, Dict, Any
 from pydub import AudioSegment
 
+from podcastfy.tts.providers.geminimulti2 import GeminiMultiTTS2
+from podcastfy.utils.logger import setup_logger
 from .tts.factory import TTSProviderFactory
 from .utils.config import load_config
 from .utils.config_conversation import load_conversation_config
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
+
+# setup_logger
 
 class TextToSpeech:
     def __init__(
-        self,
-        model: str = None,
-        api_key: Optional[str] = None,
-        conversation_config: Optional[Dict[str, Any]] = None,
+            self,
+            model: str = None,
+            api_key: Optional[str] = None,
+            conversation_config: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize the TextToSpeech class.
@@ -76,13 +81,14 @@ class TextToSpeech:
         logger.debug(f"Using provider config: {provider_config}")
         return provider_config
 
-    def convert_to_speech(self, text: str, output_file: str) -> None:
+    def convert_to_speech(self, text: str, output_file: str, single_speaker: bool = False) -> str:
         """
         Convert input text to speech and save as an audio file.
 
         Args:
                 text (str): Input text to convert to speech.
                 output_file (str): Path to save the output audio file.
+                single_speaker (bool): Whether this is a single-speaker podcast (plain text, no tags).
 
         Raises:
             ValueError: If the input text is not properly formatted
@@ -93,9 +99,48 @@ class TextToSpeech:
         cleaned_text = text
 
         try:
+            # Handle single-speaker mode (plain text, one voice)
+            if single_speaker:
+                provider_config = self._get_provider_config()
+                voice = provider_config.get("default_voices", {}).get(
+                    "question")  # Use question voice for single speaker
+                model = provider_config.get("model")
 
-            if (
-                "multi" in self.provider.model.lower()
+                logger.info("Generating single-speaker audio with one voice")
+
+                # Generate audio directly (no splitting needed)
+                audio_data = self.provider.generate_audio(cleaned_text, voice, model)
+
+                # Save the audio file
+                os.makedirs(os.path.dirname(output_file), exist_ok=True)
+                with open(output_file, "wb") as f:
+                    f.write(audio_data)
+
+                logger.info(f"Single-speaker audio saved to {output_file}")
+                return output_file
+            elif isinstance(self.provider, GeminiMultiTTS2):
+                provider_config = self._get_provider_config()
+                voice = provider_config.get("default_voices", {}).get("question")
+                voice2 = provider_config.get("default_voices", {}).get("answer")
+                model = provider_config.get("model")
+                logger.info("voice %s, voice2 %s, model: %s", voice, voice2, model)
+                audio_data = self.provider.generate_audio(cleaned_text, voice, model, voice2)
+                os.makedirs(os.path.dirname(output_file), exist_ok=True)
+                audio = AudioSegment(
+                    data=audio_data,
+                    sample_width=2,
+                    frame_rate=24000,
+                    channels=1
+                )
+                # Export to mp3
+                # audio.export(output_file, format="mp3", bitrate="320k", codec="libmp3lame")
+                # Export to mp4
+                output_file = output_file.replace(".mp3", ".m4a")
+                audio.export(output_file, format="mp4", codec="aac", bitrate="128k")
+                logger.info(f"GeminiMultiTTS2 audio saved to {output_file}")
+                return output_file
+            elif (
+                    "multi" in self.provider.model.lower()
             ):  # refactor: We should have instead MultiSpeakerTTS and SingleSpeakerTTS classes
                 provider_config = self._get_provider_config()
                 voice = provider_config.get("default_voices", {}).get("question")
@@ -116,27 +161,27 @@ class TextToSpeech:
 
                     logger.info(f"Starting audio processing with {len(audio_data_list)} chunks")
                     combined = AudioSegment.empty()
-                    
+
                     for i, chunk in enumerate(audio_data_list):
                         # Save chunk to temporary file
-                        #temp_file = "./tmp.mp3"
-                        #with open(temp_file, "wb") as f:
+                        # temp_file = "./tmp.mp3"
+                        # with open(temp_file, "wb") as f:
                         #    f.write(chunk)
-                        
+
                         segment = AudioSegment.from_file(io.BytesIO(chunk))
                         logger.info(f"################### Loaded chunk {i}, duration: {len(segment)}ms")
-                        
+
                         combined += segment
-                    
+
                     # Export with high quality settings
                     os.makedirs(os.path.dirname(output_file), exist_ok=True)
                     combined.export(
-                        output_file, 
+                        output_file,
                         format=self.audio_format,
                         codec="libmp3lame",
                         bitrate="320k"
                     )
-                    
+                    return output_file
                 except Exception as e:
                     logger.error(f"Error during audio processing: {str(e)}")
                     raise
@@ -147,6 +192,7 @@ class TextToSpeech:
                     )
                     self._merge_audio_files(audio_segments, output_file)
                     logger.info(f"Audio saved to {output_file}")
+                    return output_file
 
         except Exception as e:
             logger.error(f"Error converting text to speech: {str(e)}")
@@ -327,7 +373,7 @@ def main(seed: int = 42) -> None:
 
         # Read input text from file
         with open(
-            "tests/data/transcript_336aa9f955cd4019bc1287379a5a2820.txt", "r"
+                "tests/data/transcript_336aa9f955cd4019bc1287379a5a2820.txt", "r"
         ) as file:
             input_text = file.read()
 

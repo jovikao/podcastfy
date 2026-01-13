@@ -49,7 +49,8 @@ def process_content(
     text: Optional[str] = None,
     model_name: Optional[str] = None,
     api_key_label: Optional[str] = None,
-    longform: bool = False
+    longform: bool = False,
+    single_speaker: bool = False
 ):
     """
     Process a transcript file, image paths, or raw text to generate a podcast or transcript.
@@ -91,7 +92,8 @@ def process_content(
                 text,
                 image_file_paths=image_paths or [],
                 output_filepath=transcript_filepath,
-                longform=longform
+                longform=longform,
+                single_speaker=single_speaker
             )
 
         if generate_audio:
@@ -109,7 +111,7 @@ def process_content(
             audio_file = os.path.join(
                 output_directories.get("audio", "data/audio"), random_filename
             )
-            text_to_speech.convert_to_speech(qa_content, audio_file)
+            audio_file = text_to_speech.convert_to_speech(qa_content, audio_file, single_speaker=single_speaker)
             logger.info(f"Podcast generated successfully using {tts_model} TTS model")
             return audio_file
         else:
@@ -123,10 +125,10 @@ def process_content(
 
 @app.command()
 def main(
-    transcript: typer.FileText = typer.Option(
+    transcript: Optional[str] = typer.Option(
         None, "--transcript", "-t", help="Path to a transcript file"
     ),
-    tts_model: str = typer.Option(
+    tts_model: Optional[str] = typer.Option(
         None,
         "--tts-model",
         "-tts",
@@ -135,13 +137,13 @@ def main(
     transcript_only: bool = typer.Option(
         False, "--transcript-only", help="Generate only a transcript without audio"
     ),
-    conversation_config_path: str = typer.Option(
+    conversation_config_path: Optional[str] = typer.Option(
         None,
         "--conversation-config",
         "-cc",
         help="Path to custom conversation configuration YAML file",
     ),
-    image_paths: List[str] = typer.Option(
+    image_paths: Optional[List[str]] = typer.Option(
         None, "--image", "-i", help="Paths to image files to process"
     ),
     is_local: bool = typer.Option(
@@ -150,13 +152,13 @@ def main(
         "-l",
         help="Use a local LLM instead of a remote one (http://localhost:8080)",
     ),
-    text: str = typer.Option(
+    text: Optional[str] = typer.Option(
         None, "--text", "-txt", help="Raw text input to be processed"
     ),
-    llm_model_name: str = typer.Option(
+    llm_model_name: Optional[str] = typer.Option(
         None, "--llm-model-name", "-m", help="LLM model name for transcript generation"
     ),
-    api_key_label: str = typer.Option(
+    api_key_label: Optional[str] = typer.Option(
         None, "--api-key-label", "-k", help="Environment variable name for LLMAPI key"
     ),
     longform: bool = typer.Option(
@@ -164,6 +166,12 @@ def main(
         "--longform",
         "-lf",
         help="Generate long-form content (only available for text input without images)"
+    ),
+    single_speaker: bool = typer.Option(
+        False,
+        "--single-speaker",
+        "-ss",
+        help="Generate single-speaker podcast (monologue style instead of conversation)"
     ),
 ):
     """
@@ -188,7 +196,7 @@ def main(
             if image_paths:
                 logger.warning("Image paths are ignored when using a transcript file.")
             final_output = process_content(
-                transcript_file=transcript.name,
+                transcript_file=transcript,
                 tts_model=tts_model,
                 generate_audio=not transcript_only,
                 conversation_config=conversation_config,
@@ -197,7 +205,8 @@ def main(
                 text=text,
                 model_name=llm_model_name,
                 api_key_label=api_key_label,
-                longform=longform
+                longform=longform,
+                single_speaker=single_speaker
             )
         else:
             if not image_paths and not text:
@@ -215,7 +224,8 @@ def main(
                 text=text,
                 model_name=llm_model_name,
                 api_key_label=api_key_label,
-                longform=longform
+                longform=longform,
+                single_speaker=single_speaker
             )
 
         if transcript_only:

@@ -6,7 +6,7 @@ from .providers.elevenlabs import ElevenLabsTTS
 from .providers.openai import OpenAITTS
 from .providers.edge import EdgeTTS
 from .providers.gemini import GeminiTTS
-from .providers.geminimulti import GeminiMultiTTS
+from .providers.geminimulti2 import GeminiMultiTTS2
 from .providers.azure import AzureTTS
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class TTSProviderFactory:
         'openai': OpenAITTS,
         'edge': EdgeTTS,
         'gemini': GeminiTTS,
-        'geminimulti': GeminiMultiTTS,
+        'geminimulti': GeminiMultiTTS2,
         'azure': AzureTTS
     }
     

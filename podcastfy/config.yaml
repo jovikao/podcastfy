@@ -6,6 +6,7 @@ content_generator:
   prompt_commit: "b2365f11"
   longform_prompt_template: "souzatharsis/podcastfy_longform"
   longform_prompt_commit: "acfdbc91" #"ff865019"
+  single_speaker_prompt_template: "templates/prompt_template_single_speaker.md"  # Local file path for single-speaker mode
   cleaner_prompt_template: "souzatharsis/podcastfy_longform_clean"
   cleaner_prompt_commit: "8c110a0b"
   rewriter_prompt_template: "souzatharsis/podcast_rewriter"
